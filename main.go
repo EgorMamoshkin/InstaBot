@@ -5,7 +5,12 @@ import (
 	"log"
 )
 
+const (
+	tgBotHost = "api.telegram.org"
+)
+
 func main() {
+	// tgClient := tg_client.New(tgBotHost, mustToken())
 
 }
 
