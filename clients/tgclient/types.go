@@ -10,7 +10,7 @@ type Updates struct {
 }
 
 type MediaGroup struct {
-	contentType string `json:"type"`
-	contentURL  string `json:"media"`
-	caption     string `json:"caption"`
+	ContentType string `json:"type"`
+	ContentURL  string `json:"media"`
+	Caption     string `json:"caption"`
 }
