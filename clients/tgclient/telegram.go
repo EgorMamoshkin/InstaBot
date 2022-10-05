@@ -1,8 +1,9 @@
-package tg_client
+package tgclient
 
 import (
 	"InstaBot/lib/er"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/url"
@@ -26,7 +27,7 @@ const (
 
 func New(host string, token string) Client {
 	return Client{
-		host:     "host",
+		host:     host,
 		basePath: newBasePath(token),
 		client:   http.Client{},
 	}
@@ -36,7 +37,7 @@ func newBasePath(token string) string {
 	return "bot" + token
 }
 
-func (c *Client) Updates(offset int, limit int) ([]Updates, error) {
+func (c *Client) Updates(offset int, limit int) ([]Update, error) {
 	const getUpdError = "Getting updates failed"
 	qr := url.Values{}
 	qr.Add("offset", strconv.Itoa(offset))
@@ -66,10 +67,11 @@ func (c *Client) SendMessage(chatID int, text string) error {
 	return nil
 }
 
-func (c *Client) SendPhoto(chatID int, photoURL string) error {
+func (c *Client) SendPhoto(chatID int, photoURL string, caption string) error {
 	qr := url.Values{}
 	qr.Add("chat_id", strconv.Itoa(chatID))
 	qr.Add("photo", photoURL)
+	qr.Add("caption", caption)
 
 	_, err := c.doRequest(sendPhotoMethod, qr)
 	if err != nil {
@@ -78,10 +80,11 @@ func (c *Client) SendPhoto(chatID int, photoURL string) error {
 	return nil
 }
 
-func (c *Client) SendVideo(chatID int, videoURL string) error {
+func (c *Client) SendVideo(chatID int, videoURL string, caption string) error {
 	qr := url.Values{}
 	qr.Add("chat_id", strconv.Itoa(chatID))
 	qr.Add("video", videoURL)
+	qr.Add("caption", caption)
 
 	_, err := c.doRequest(sendVideoMethod, qr)
 	if err != nil {
@@ -104,6 +107,52 @@ func (c *Client) SendMediaGroup(chatID int, mediaGr []MediaGroup) error {
 	_, err = c.doRequest(sendMediaGroupMethod, qr)
 	if err != nil {
 		return er.Wrap("sending carousel failed", err)
+	}
+	return nil
+}
+
+func (c *Client) SendPost(chatIDid int, mType []int, urls []string, caption string) error {
+	mediaGr := NewMediaGr(mType, urls, caption)
+	if len(mType) > 1 {
+		return c.SendMediaGroup(chatIDid, *mediaGr)
+	}
+
+	switch mType[0] {
+	case 1:
+		return c.SendPhoto(chatIDid, urls[0], caption)
+	case 2:
+		return c.SendVideo(chatIDid, urls[0], caption)
+	default:
+		return errors.New("unknown media type")
+	}
+}
+func NewMediaGr(mType []int, urls []string, caption string) *[]MediaGroup {
+	mediaGR := make([]MediaGroup, 0, len(mType))
+	for i := 0; i < len(mType); i++ {
+		mg := MediaGroup{
+			ContentType: mTypeValue(mType[i]),
+			ContentURL:  urls[i],
+			Caption:     captionValue(i, caption),
+		}
+		mediaGR = append(mediaGR, mg)
+	}
+	return &mediaGR
+}
+
+func mTypeValue(mType int) string {
+	switch mType {
+	case 1:
+		return "photo"
+	case 2:
+		return "video"
+	default:
+		return ""
+	}
+}
+
+func captionValue(i int, cap string) interface{} {
+	if i == 0 {
+		return cap
 	}
 	return nil
 }
