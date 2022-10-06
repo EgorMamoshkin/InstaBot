@@ -11,7 +11,7 @@ type Update struct {
 
 type IncMessage struct {
 	From User   `json:"from"`
-	Chat Chat   `json:"sender_chat"`
+	Chat Chat   `json:"chat"`
 	Text string `json:"text"`
 }
 

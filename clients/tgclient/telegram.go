@@ -25,8 +25,8 @@ const (
 	sendMediaGroupMethod = "sendMediaGroup"
 )
 
-func New(host string, token string) Client {
-	return Client{
+func New(host string, token string) *Client {
+	return &Client{
 		host:     host,
 		basePath: newBasePath(token),
 		client:   http.Client{},
@@ -111,28 +111,32 @@ func (c *Client) SendMediaGroup(chatID int, mediaGr []MediaGroup) error {
 	return nil
 }
 
-func (c *Client) SendPost(chatIDid int, mType []int, urls []string, caption string) error {
+func (c *Client) SendPost(chatID int, mType []int, urls []string, caption string) error {
 	mediaGr := NewMediaGr(mType, urls, caption)
+
 	if len(mType) > 1 {
-		return c.SendMediaGroup(chatIDid, *mediaGr)
+
+		_ = c.SendMediaGroup(chatID, *mediaGr)
+		return c.SendMessage(chatID, caption)
 	}
 
 	switch mType[0] {
 	case 1:
-		return c.SendPhoto(chatIDid, urls[0], caption)
+		return c.SendPhoto(chatID, urls[0], caption)
 	case 2:
-		return c.SendVideo(chatIDid, urls[0], caption)
+		return c.SendVideo(chatID, urls[0], caption)
 	default:
 		return errors.New("unknown media type")
 	}
 }
 func NewMediaGr(mType []int, urls []string, caption string) *[]MediaGroup {
 	mediaGR := make([]MediaGroup, 0, len(mType))
+
 	for i := 0; i < len(mType); i++ {
 		mg := MediaGroup{
 			ContentType: mTypeValue(mType[i]),
 			ContentURL:  urls[i],
-			Caption:     captionValue(i, caption),
+			Caption:     caption,
 		}
 		mediaGR = append(mediaGR, mg)
 	}
