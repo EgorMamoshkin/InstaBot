@@ -17,13 +17,13 @@ func GetData(item *goinsta.Item) (mediaType []int, url []string, text string, er
 		mediaType := []int{item.MediaType}
 		url := make([]string, 0, 1)
 		url = append(url, goinsta.GetBest(item.Images.Versions))
-		text := getBlogName(item) + "/n" + item.Caption.Text
+		text := getBlogName(item) + "\n" + item.Caption.Text
 		return mediaType, url, text, nil
 	case 2:
 		mediaType := []int{item.MediaType}
 		url := make([]string, 0, 1)
 		url = append(url, goinsta.GetBest(item.Videos))
-		text := getBlogName(item) + "/n" + item.Caption.Text
+		text := getBlogName(item) + "\n" + item.Caption.Text
 		return mediaType, url, text, nil
 	case 8:
 		url := make([]string, 0, len(item.CarouselMedia))
@@ -37,7 +37,7 @@ func GetData(item *goinsta.Item) (mediaType []int, url []string, text string, er
 			url = append(url, u[0])
 			time.Sleep(100 * time.Millisecond)
 		}
-		text := getBlogName(item) + "/n" + item.Caption.Text
+		text := getBlogName(item) + "\n" + item.Caption.Text
 		return mediaType, url, text, nil
 
 	default:
