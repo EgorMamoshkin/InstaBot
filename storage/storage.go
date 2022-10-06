@@ -5,11 +5,12 @@ import (
 )
 
 type Storage interface {
-	SaveAccount(u *User) error
+	SaveAccount(u *User, lastPID string) error
 	GetAccount(userName string) (*User, error)
+	SaveLastPostID(postID string, username string) error
 }
 
 type User struct {
-	UserName string
-	InstAcc  *goinsta.Instagram
+	LastPostID string
+	InstAcc    *goinsta.Instagram
 }
