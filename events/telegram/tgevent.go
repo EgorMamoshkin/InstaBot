@@ -5,6 +5,7 @@ import (
 	"InstaBot/events"
 	"InstaBot/lib/er"
 	"InstaBot/storage"
+	"context"
 	"errors"
 )
 
@@ -50,21 +51,21 @@ func (p *Processor) Fetch(limit int) ([]events.Event, error) {
 	return res, nil
 }
 
-func (p *Processor) Process(event events.Event) error {
+func (p *Processor) Process(ctx context.Context, event events.Event) error {
 	switch event.Type {
 	case events.Message:
-		return p.processMessage(event)
+		return p.processMessage(ctx, event)
 	default:
 		return er.Wrap("can't handle event", ErrUnknownEventType)
 	}
 }
 
-func (p *Processor) processMessage(event events.Event) error {
+func (p *Processor) processMessage(ctx context.Context, event events.Event) error {
 	meta, err := meta(event)
 	if err != nil {
 		return er.Wrap("can't handle message:", err)
 	}
-	if err := p.execCmd(event.Text, meta.ChatID, meta.Username); err != nil {
+	if err := p.execCmd(ctx, event.Text, meta.ChatID, meta.Username); err != nil {
 		return er.Wrap("can't process the message:", err)
 	}
 

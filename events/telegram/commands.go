@@ -4,6 +4,7 @@ import (
 	insta_parse "InstaBot/insta-parse"
 	"InstaBot/lib/er"
 	"InstaBot/storage"
+	"context"
 	"errors"
 	"github.com/Davincible/goinsta/v3"
 	"log"
@@ -16,7 +17,7 @@ const (
 	GetUpdatesCmd = "/upd"
 )
 
-func (p *Processor) execCmd(text string, chatID int, username string) error {
+func (p *Processor) execCmd(ctx context.Context, text string, chatID int, username string) error {
 	text = strings.TrimSpace(text)
 
 	log.Printf("new command '%s' from %s(%d)", text, username, chatID)
@@ -27,16 +28,15 @@ func (p *Processor) execCmd(text string, chatID int, username string) error {
 	case StartCmd:
 		return p.SendHello(chatID)
 	case GetUpdatesCmd:
-		return p.StartFeedUpd(chatID, username)
+		return p.StartFeedUpd(ctx, chatID, username)
 	default:
 		if login, pass, err := isLoginPass(text); err != nil {
 			_ = p.tg.SendMessage(chatID, msgUnknownCommand)
 			return err
 		} else {
-			return p.SaveInstAcc(chatID, login, pass, username)
+			return p.SaveInstAcc(ctx, chatID, login, pass, username)
 		}
 	}
-	return nil
 }
 
 func (p *Processor) SendHelp(chatID int) error {
@@ -47,7 +47,7 @@ func (p *Processor) SendHello(chatID int) error {
 	return p.tg.SendMessage(chatID, msgHello)
 }
 
-func (p *Processor) SaveInstAcc(chatID int, login string, pass string, username string) error {
+func (p *Processor) SaveInstAcc(ctx context.Context, chatID int, login string, pass string, username string) error {
 	instAcc, err := loginInstagram(login, pass)
 	if err != nil {
 		_ = p.tg.SendMessage(chatID, msgLogInFailed)
@@ -61,18 +61,21 @@ func (p *Processor) SaveInstAcc(chatID int, login string, pass string, username 
 		InstAcc:    instAcc,
 	}
 
-	if err := p.storage.SaveAccount(&user, username); err != nil {
+	if err := p.storage.SaveAccount(ctx, &user, username); err != nil {
 		_ = p.tg.SendMessage(chatID, msgSavingAccFailed)
 		return er.Wrap("account saving failed: ", err)
 	}
 	return p.tg.SendMessage(chatID, msgLoggedIn)
 }
 
-func (p *Processor) StartFeedUpd(chatID int, username string) error {
-	user, err := p.storage.GetAccount(username)
+func (p *Processor) StartFeedUpd(ctx context.Context, chatID int, username string) error {
+	user, err := p.storage.GetAccount(ctx, username)
 	if err != nil {
 		_ = p.tg.SendMessage(chatID, msgOpenAccFailed)
 		return err
+	}
+	if user == nil {
+		return p.tg.SendMessage(chatID, msgNotLoggedInBefore)
 	}
 	log.Printf("user %s logged in\n", username)
 	timeLine := user.InstAcc.Timeline
@@ -95,7 +98,10 @@ func (p *Processor) StartFeedUpd(chatID int, username string) error {
 			}
 			err = p.tg.SendPost(chatID, mType, urls, caption)
 		}
-		return p.storage.SaveLastPostID(np[0].ID.(string), username)
+		if len(np) != 0 {
+			return p.storage.SaveLastPostID(ctx, np[0].ID.(string), username)
+		}
+		return p.tg.SendMessage(chatID, msgNoNewPost)
 	} else {
 		return p.tg.SendMessage(chatID, msgNoNewPost)
 	}
