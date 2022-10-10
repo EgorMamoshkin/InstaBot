@@ -1,13 +1,14 @@
 package storage
 
 import (
+	"context"
 	"github.com/Davincible/goinsta/v3"
 )
 
 type Storage interface {
-	SaveAccount(u *User, lastPID string) error
-	GetAccount(userName string) (*User, error)
-	SaveLastPostID(postID string, username string) error
+	SaveAccount(ctx context.Context, u *User, lastPID string) error
+	GetAccount(ctx context.Context, userName string) (*User, error)
+	SaveLastPostID(ctx context.Context, postID string, username string) error
 }
 
 type User struct {
