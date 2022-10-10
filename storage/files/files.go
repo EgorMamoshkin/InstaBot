@@ -7,7 +7,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"github.com/Davincible/goinsta/v3"
-	_ "github.com/jackc/pgx/stdlib"
+	_ "github.com/jackc/pgx/v5"
 )
 
 type Storage struct {
