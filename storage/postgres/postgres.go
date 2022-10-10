@@ -7,18 +7,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"github.com/Davincible/goinsta/v3"
-)
-
-package files
-
-import (
-"InstaBot/lib/er"
-"InstaBot/storage"
-"context"
-"database/sql"
-"encoding/json"
-"github.com/Davincible/goinsta/v3"
-_ "github.com/jackc/pgx/v5"
+	_ "github.com/jackc/pgx/v5/stdlib"
+	"time"
 )
 
 type Storage struct {
@@ -47,6 +37,8 @@ func (s *Storage) SaveAccount(ctx context.Context, user *storage.User, username 
 		return er.Wrap("can't convert config into json:", err)
 	}
 
+	ctx, _ = context.WithTimeout(ctx, 5*time.Second)
+
 	q := `INSERT INTO instagram_users (username_tg, instagram_acc, last_post_id) VALUES ($1, $2, $3)`
 	_, err = s.db.ExecContext(ctx, q, username, instConfig, user.LastPostID)
 	if err != nil {
@@ -57,9 +49,9 @@ func (s *Storage) SaveAccount(ctx context.Context, user *storage.User, username 
 
 //GetAccount imports account from storage.
 func (s *Storage) GetAccount(ctx context.Context, username string) (*storage.User, error) {
+	ctx, _ = context.WithTimeout(ctx, 5*time.Second)
 
 	q := `SELECT instagram_acc, last_post_id FROM instagram_users WHERE username_tg = $1`
-
 	row := s.db.QueryRowContext(ctx, q, username)
 
 	var instConfig string
@@ -90,8 +82,9 @@ func (s *Storage) GetAccount(ctx context.Context, username string) (*storage.Use
 
 // SaveLastPostID saves last post from feed in storage.
 func (s *Storage) SaveLastPostID(ctx context.Context, postID string, username string) error {
-	q := `UPDATE instagram_users SET last_post_id = $1 WHERE username_tg = $2`
+	ctx, _ = context.WithTimeout(ctx, 5*time.Second)
 
+	q := `UPDATE instagram_users SET last_post_id = $1 WHERE username_tg = $2`
 	_, err := s.db.ExecContext(ctx, q, postID, username)
 	if err == sql.ErrNoRows {
 		return er.Wrap("can't save last post ID: ", err)
@@ -100,9 +93,13 @@ func (s *Storage) SaveLastPostID(ctx context.Context, postID string, username st
 }
 
 func (s *Storage) Init(ctx context.Context) error {
-	q := `CREATE TABLE IF NOT EXISTS instagram_users (user_id INT PRIMARY KEY, username_tg VARCHAR, instagram_acc VARCHAR, last_post_id VARCHAR)`
+	q := `CREATE TABLE IF NOT EXISTS instagram_users (user_id SERIAL PRIMARY KEY, username_tg VARCHAR(40), instagram_acc VARCHAR, last_post_id VARCHAR(40))`
+
+	ctx, _ = context.WithTimeout(ctx, 5*time.Second)
+
 	_, err := s.db.ExecContext(ctx, q)
 	if err != nil {
 		return er.Wrap("can't create new table: ", err)
 	}
+	return nil
 }
