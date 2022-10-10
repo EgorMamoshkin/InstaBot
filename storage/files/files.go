@@ -3,100 +3,83 @@ package files
 import (
 	"InstaBot/lib/er"
 	"InstaBot/storage"
-	"fmt"
+	"context"
+	"database/sql"
+	"encoding/json"
 	"github.com/Davincible/goinsta/v3"
-	"io/ioutil"
-	"os"
-	"path/filepath"
+	_ "github.com/jackc/pgx/stdlib"
 )
 
 type Storage struct {
-	basePath string
+	db *sql.DB
 }
 
-const defaultPerm = 0744
-
-func New(basePath string) Storage {
-	return Storage{basePath: basePath}
+func New(dsn string) (*Storage, error) {
+	db, err := sql.Open("pgx", dsn)
+	if err != nil {
+		return nil, er.Wrap("can't open database: ", err)
+	}
+	if err := db.Ping(); err != nil {
+		return nil, er.Wrap("can't connect to database: ", err)
+	}
+	return &Storage{db: db}, nil
 }
 
-func (s Storage) SaveAccount(user *storage.User, username string) error {
-	instAcFPath := filepath.Join(s.basePath, username)
+func (s *Storage) SaveAccount(ctx context.Context, user *storage.User, username string) error {
 
-	if err := os.MkdirAll(instAcFPath, defaultPerm); err != nil {
-		return er.Wrap("creating directories failed:", err)
+	config := user.InstAcc.ExportConfig()
+	configJson, err := json.Marshal(config)
+	instConfig := string(configJson)
+	if err != nil {
+		return er.Wrap("can't convert config into json:", err)
 	}
 
-	instAcFPath = filepath.Join(instAcFPath, instFileName(username))
-	err := user.InstAcc.Export(instAcFPath)
+	q := `INSERT INTO instagram_users (username_tg, instagram_acc, last_post_id) VALUES ($1, $2, $3)`
+	_, err = s.db.ExecContext(ctx, q, username, instConfig, user.LastPostID)
 	if err != nil {
-		return er.Wrap("account saving failed:", err)
-	}
-
-	lastPostFPath := filepath.Join(instAcFPath, lastPostFileName(username))
-	err = saveLastPostID(lastPostFPath, user.LastPostID)
-	if err != nil {
-		return er.Wrap("saving last post ID failed:", err)
-	}
-
-	return nil
-}
-
-func (s Storage) GetAccount(username string) (*storage.User, error) {
-	fPath := filepath.Join(s.basePath, username, instFileName(username))
-
-	instAcc, err := goinsta.Import(fPath)
-	if err != nil {
-		return nil, er.Wrap("instagram account import failed:", err)
-	}
-
-	lastPostFPath := filepath.Join(s.basePath, username, lastPostFileName(username))
-	lastID, err := readLastPostID(lastPostFPath)
-	if err != nil {
-		return nil, er.Wrap("getting last post ID failed:", err)
-	}
-
-	return &storage.User{LastPostID: lastID, InstAcc: instAcc}, nil
-}
-
-func (s Storage) SaveLastPostID(postID string, username string) error {
-	lastPostFPath := filepath.Join(s.basePath, username, lastPostFileName(username))
-	err := saveLastPostID(lastPostFPath, postID)
-	if err != nil {
-		return er.Wrap("saving last post ID failed:", err)
+		return er.Wrap("can't save account data into database: ", err)
 	}
 	return nil
 }
 
-func instFileName(userName string) string {
-	return fmt.Sprintf("%s.json", userName)
+func (s *Storage) GetAccount(ctx context.Context, username string) (*storage.User, error) {
+
+	q := `SELECT instagram_acc, last_post_id FROM instagram_users WHERE username_tg = $1`
+
+	row := s.db.QueryRowContext(ctx, q, username)
+
+	var instConfig string
+	var lastPostID string
+
+	err := row.Scan(&instConfig, &lastPostID)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, er.Wrap("can't get instagram account: ", err)
+	}
+
+	config := goinsta.ConfigFile{}
+
+	err = json.Unmarshal([]byte(instConfig), &config)
+	if err != nil {
+		return nil, er.Wrap("can't convert json to ConfigFile: ", err)
+	}
+
+	instAcc, err := goinsta.ImportConfig(config)
+	if err != nil {
+		return nil, er.Wrap("can't import instagram account: ", err)
+	}
+
+	return &storage.User{LastPostID: lastPostID, InstAcc: instAcc}, nil
 }
 
-func lastPostFileName(userName string) string {
-	return fmt.Sprintf("ID%s.txt", userName)
-}
+func (s *Storage) SaveLastPostID(ctx context.Context, postID string, username string) error {
+	q := `UPDATE instagram_users SET last_post_id = $1 WHERE username_tg = $2`
 
-func saveLastPostID(fPath string, lastID string) error {
-	file, err := os.Create(fPath)
-	if err != nil {
-		return er.Wrap("creating file failed: ", err)
-	}
-	_, err = file.WriteString(lastID)
-	if err != nil {
-		return er.Wrap("writing to file failed: ", err)
-	}
-	err = file.Close()
-	if err != nil {
-		return er.Wrap("closing file failed: ", err)
+	_, err := s.db.ExecContext(ctx, q, postID, username)
+	if err == sql.ErrNoRows {
+		return er.Wrap("can't save last post ID: ", err)
 	}
 	return nil
-}
-
-func readLastPostID(fPath string) (string, error) {
-	id, err := ioutil.ReadFile(fPath)
-	if err != nil {
-		return "", er.Wrap("can't open file: ", err)
-	}
-	return string(id), nil
-
 }
