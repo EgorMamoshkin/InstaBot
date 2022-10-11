@@ -7,6 +7,7 @@ import (
 	"InstaBot/storage/postgres"
 	"context"
 	"flag"
+	"fmt"
 	"log"
 )
 
@@ -17,7 +18,9 @@ const (
 )
 
 func main() {
-	dsn := "postgres://postgres:Link895olN@localhost:5432/instagramBotDB?sslmode=disable"
+	token, pass := mustTokenPass()
+
+	dsn := fmt.Sprintf("postgres://postgres:%s@localhost:5432/instagramBotDB?sslmode=disable", pass)
 	s, err := postgres.New(dsn)
 	if err != nil {
 		log.Fatal("can't connect to storage", err)
@@ -31,7 +34,7 @@ func main() {
 	}
 
 	eventsProcessor := telegram.New(
-		tgclient.New(tgBotHost, mustToken()),
+		tgclient.New(tgBotHost, token),
 		s,
 	)
 	log.Print("service started")
@@ -45,11 +48,16 @@ func main() {
 
 }
 
-func mustToken() string {
+func mustTokenPass() (string, string) {
 	token := flag.String(
 		"tg-bot-token",
 		"",
 		"token for access to your bot",
+	)
+	pass := flag.String(
+		"psql-pass",
+		"",
+		"SQL DB user password",
 	)
 
 	flag.Parse()
@@ -58,5 +66,5 @@ func mustToken() string {
 		log.Fatal("token not received on app launch")
 	}
 
-	return *token
+	return *token, *pass
 }
