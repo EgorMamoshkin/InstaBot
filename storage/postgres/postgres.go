@@ -1,12 +1,13 @@
 package postgres
 
 import (
-	"InstaBot/lib/er"
-	"InstaBot/storage"
 	"context"
 	"database/sql"
 	"encoding/json"
 	"github.com/Davincible/goinsta/v3"
+	"github.com/EgorMamoshkin/InstaBot/auth"
+	"github.com/EgorMamoshkin/InstaBot/lib/er"
+	"github.com/EgorMamoshkin/InstaBot/storage"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"time"
 )
@@ -40,7 +41,7 @@ func (s *Storage) SaveAccount(ctx context.Context, user *storage.User, username 
 
 	instConfig := string(configJSON)
 
-	ctx, _ = context.WithTimeout(ctx, 5 * time.Second)
+	ctx, _ = context.WithTimeout(ctx, 5*time.Second)
 
 	q := `INSERT INTO instagram_users (username_tg, instagram_acc, last_post_id) VALUES ($1, $2, $3)`
 
@@ -89,7 +90,7 @@ func (s *Storage) GetAccount(ctx context.Context, username string) (*storage.Use
 
 // SaveLastPostID saves last post from feed in storage.
 func (s *Storage) SaveLastPostID(ctx context.Context, postID string, username string) error {
-	ctx, _ = context.WithTimeout(ctx, 5 * time.Second)
+	ctx, _ = context.WithTimeout(ctx, 5*time.Second)
 
 	q := `UPDATE instagram_users SET last_post_id = $1 WHERE username_tg = $2`
 
@@ -101,10 +102,25 @@ func (s *Storage) SaveLastPostID(ctx context.Context, postID string, username st
 	return nil
 }
 
-func (s *Storage) Init(ctx context.Context) error {
-	q := `CREATE TABLE IF NOT EXISTS instagram_users (user_id SERIAL PRIMARY KEY, username_tg VARCHAR(40), instagram_acc VARCHAR, last_post_id VARCHAR(40))`
+func (s *Storage) SaveToken(chatID int, userToken auth.UserAccess) error {
+	q := `INSERT INTO token(tg_chat_id, instagram_user_id, access_token) VALUES($1, $2, $3)`
 
-	ctx, _ = context.WithTimeout(ctx, 5 * time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	_, err := s.db.ExecContext(ctx, q, chatID, userToken.UserID, userToken.Token)
+	if err != nil {
+		return er.Wrap("can't save token: ", err)
+	}
+
+	return nil
+}
+
+func (s *Storage) Init(ctx context.Context) error {
+	q := `CREATE TABLE IF NOT EXISTS instagram_users (user_id SERIAL PRIMARY KEY, username_tg VARCHAR(40), instagram_acc VARCHAR, last_post_id VARCHAR(40));
+	CREATE TABLE IF NOT EXISTS token (id SERIAL PRIMARY KEY, tg_chat_id INT, instagram_user_id INT, access_token VARCHAR)`
+
+	ctx, _ = context.WithTimeout(ctx, 5*time.Second)
 
 	_, err := s.db.ExecContext(ctx, q)
 	if err != nil {
