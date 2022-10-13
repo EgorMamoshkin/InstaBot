@@ -41,10 +41,7 @@ func main() {
 
 	consumer := event_consumer.New(eventsProcessor, eventsProcessor, batchSize)
 
-	if err := consumer.Start(ctx); err != nil {
-		log.Fatal("service is stopped", err)
-
-	}
+	consumer.Start(ctx)
 
 }
 

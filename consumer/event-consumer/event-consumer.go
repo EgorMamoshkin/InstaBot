@@ -22,11 +22,12 @@ func New(fetcher events.Fetcher, processor events.Processor, batchSize int) *Con
 	}
 }
 
-func (c *Consumer) Start(ctx context.Context) error {
+func (c *Consumer) Start(ctx context.Context) {
 	for {
 		gotEvents, err := c.fetcher.Fetch(c.batchSize)
 		if err != nil {
 			log.Printf("ERROR Consumer: %s", err.Error())
+
 			continue
 		}
 		if len(gotEvents) == 0 {
@@ -38,13 +39,14 @@ func (c *Consumer) Start(ctx context.Context) error {
 			log.Print(err)
 			continue
 		}
-
 	}
 }
 
 func (c *Consumer) handleEvents(ctx context.Context, events []events.Event) error {
 	var wg sync.WaitGroup
+
 	wg.Add(len(events))
+
 	for _, event := range events {
 		go func(wg *sync.WaitGroup) {
 			log.Printf("got new event: %s", event.Text)
