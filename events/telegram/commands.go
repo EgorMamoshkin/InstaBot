@@ -32,6 +32,7 @@ func (p *Processor) execCmd(ctx context.Context, text string, chatID int, userna
 	default:
 		if login, pass, err := isLoginPass(text); err != nil {
 			_ = p.tg.SendMessage(chatID, msgUnknownCommand)
+
 			return err
 		} else {
 			return p.SaveInstAcc(ctx, chatID, login, pass, username)
@@ -51,10 +52,11 @@ func (p *Processor) SaveInstAcc(ctx context.Context, chatID int, login string, p
 	instAcc, err := loginInstagram(login, pass)
 	if err != nil {
 		_ = p.tg.SendMessage(chatID, msgLogInFailed)
+
 		return er.Wrap("log in to account failed:", err)
 	}
 
-	lastID := lastPostId(instAcc)
+	lastID := lastPostID(instAcc)
 
 	user := storage.User{
 		LastPostID: lastID,
@@ -63,8 +65,10 @@ func (p *Processor) SaveInstAcc(ctx context.Context, chatID int, login string, p
 
 	if err := p.storage.SaveAccount(ctx, &user, username); err != nil {
 		_ = p.tg.SendMessage(chatID, msgSavingAccFailed)
+
 		return er.Wrap("account saving failed: ", err)
 	}
+
 	return p.tg.SendMessage(chatID, msgLoggedIn)
 }
 
@@ -72,47 +76,57 @@ func (p *Processor) StartFeedUpd(ctx context.Context, chatID int, username strin
 	user, err := p.storage.GetAccount(ctx, username)
 	if err != nil {
 		_ = p.tg.SendMessage(chatID, msgOpenAccFailed)
-		return err
+
+		return er.Wrap("can't get your account", err)
 	}
+
 	if user == nil {
 		return p.tg.SendMessage(chatID, msgNotLoggedInBefore)
 	}
+
 	log.Printf("user %s logged in\n", username)
+
 	timeLine := user.InstAcc.Timeline
 	lastPID := user.LastPostID
 
 	if ok, err := timeLine.NewFeedPostsExist(); ok {
 		log.Println("New post available")
+
 		if err != nil {
 			log.Println(err)
 		}
+
 		np := newPosts(timeLine, lastPID)
 		for _, post := range np {
 			if post.IsSeen {
 				continue
 			}
+
 			mType, urls, caption, err := insta_parse.GetData(post)
 			if err != nil {
 				log.Println(err)
+
 				continue
 			}
-			err = p.tg.SendPost(chatID, mType, urls, caption)
+			_ = p.tg.SendPost(chatID, mType, urls, caption)
 		}
+
 		if len(np) != 0 {
 			return p.storage.SaveLastPostID(ctx, np[0].ID.(string), username)
 		}
-		return p.tg.SendMessage(chatID, msgNoNewPost)
-	} else {
+
 		return p.tg.SendMessage(chatID, msgNoNewPost)
 	}
+
+	return p.tg.SendMessage(chatID, msgNoNewPost)
 }
 
 func loginInstagram(login string, pass string) (*goinsta.Instagram, error) {
-
 	instAcc := goinsta.New(login, pass)
 	if err := instAcc.Login(); err != nil {
 		return nil, err
 	}
+
 	return instAcc, nil
 }
 
@@ -129,19 +143,22 @@ func isLoginPass(text string) (string, string, error) {
 	if len(passLog) != 2 {
 		return "", "", errWrongFormat
 	}
+
 	return passLog[0], passLog[1], nil
 }
 
-func lastPostId(instAcc *goinsta.Instagram) string {
+func lastPostID(instAcc *goinsta.Instagram) string {
 	tLine := instAcc.Timeline
 	tLine.Next()
 	posts := tLine.Items
+
 	return posts[0].ID.(string)
 }
 
 func newPosts(tLine *goinsta.Timeline, lastPID string) []*goinsta.Item {
 	posts := tLine.Items
 	idx := -1
+
 	for idx == -1 {
 		idx = getIndex(lastPID, posts)
 		if idx == -1 {
@@ -149,6 +166,7 @@ func newPosts(tLine *goinsta.Timeline, lastPID string) []*goinsta.Item {
 			posts = tLine.Items
 		}
 	}
+
 	return posts[:idx]
 }
 
@@ -158,5 +176,6 @@ func getIndex(lastItemID string, posts []*goinsta.Item) int {
 			return idx
 		}
 	}
+
 	return -1
 }

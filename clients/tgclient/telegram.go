@@ -39,6 +39,7 @@ func newBasePath(token string) string {
 
 func (c *Client) Updates(offset int, limit int) ([]Update, error) {
 	const getUpdError = "Getting updates failed"
+
 	qr := url.Values{}
 	qr.Add("offset", strconv.Itoa(offset))
 	qr.Add("limit", strconv.Itoa(limit))
@@ -52,6 +53,7 @@ func (c *Client) Updates(offset int, limit int) ([]Update, error) {
 	if err := json.Unmarshal(data, &resp); err != nil {
 		return nil, er.Wrap(getUpdError, err)
 	}
+
 	return resp.Result, nil
 }
 
@@ -64,6 +66,7 @@ func (c *Client) SendMessage(chatID int, text string) error {
 	if err != nil {
 		return er.Wrap("sending the message failed", err)
 	}
+
 	return nil
 }
 
@@ -77,6 +80,7 @@ func (c *Client) SendPhoto(chatID int, photoURL string, caption string) error {
 	if err != nil {
 		return er.Wrap("sending photo failed", err)
 	}
+
 	return nil
 }
 
@@ -90,6 +94,7 @@ func (c *Client) SendVideo(chatID int, videoURL string, caption string) error {
 	if err != nil {
 		return er.Wrap("sending video failed", err)
 	}
+
 	return nil
 }
 
@@ -98,6 +103,7 @@ func (c *Client) SendMediaGroup(chatID int, mediaGr []MediaGroup) error {
 	if err != nil {
 		return er.Wrap("media group marshalling failed", err)
 	}
+
 	mediaArray := string(res)
 
 	qr := url.Values{}
@@ -108,16 +114,17 @@ func (c *Client) SendMediaGroup(chatID int, mediaGr []MediaGroup) error {
 	if err != nil {
 		return er.Wrap("sending carousel failed", err)
 	}
+
 	return nil
 }
 
 func (c *Client) SendPost(chatID int, mType []int, urls []string, caption string) error {
 	mediaGr := NewMediaGr(mType, urls, caption)
-
 	if len(mType) > 1 {
-
 		_ = c.SendMediaGroup(chatID, *mediaGr)
-		return c.SendMessage(chatID, caption)
+		err := c.SendMessage(chatID, caption)
+
+		return er.Wrap("can't send post", err)
 	}
 
 	switch mType[0] {
@@ -140,6 +147,7 @@ func NewMediaGr(mType []int, urls []string, caption string) *[]MediaGroup {
 		}
 		mediaGR = append(mediaGR, mg)
 	}
+
 	return &mediaGR
 }
 
@@ -154,15 +162,9 @@ func mTypeValue(mType int) string {
 	}
 }
 
-func captionValue(i int, cap string) interface{} {
-	if i == 0 {
-		return cap
-	}
-	return nil
-}
-
 func (c *Client) doRequest(method string, query url.Values) ([]byte, error) {
 	const reqError = "request failed"
+
 	u := url.URL{
 		Scheme: "https",
 		Host:   c.host,
@@ -176,6 +178,7 @@ func (c *Client) doRequest(method string, query url.Values) ([]byte, error) {
 
 	req.URL.RawQuery = query.Encode()
 	resp, err := c.client.Do(req)
+
 	if err != nil {
 		return nil, er.Wrap(reqError, err)
 	}
@@ -187,5 +190,4 @@ func (c *Client) doRequest(method string, query url.Values) ([]byte, error) {
 	}
 
 	return body, nil
-
 }

@@ -31,7 +31,8 @@ func (c *Consumer) Start(ctx context.Context) {
 			continue
 		}
 		if len(gotEvents) == 0 {
-			time.Sleep(2 * time.Second)
+			time.Sleep(1 * time.Second)
+
 			continue
 		}
 
@@ -58,5 +59,6 @@ func (c *Consumer) handleEvents(ctx context.Context, events []events.Event) erro
 		}(&wg)
 	}
 	wg.Wait()
+
 	return nil
 }

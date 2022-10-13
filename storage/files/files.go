@@ -28,12 +28,14 @@ func (s Storage) SaveAccount(user *storage.User, username string) error {
 	}
 
 	instAcFPath = filepath.Join(instAcFPath, instFileName(username))
+
 	err := user.InstAcc.Export(instAcFPath)
 	if err != nil {
 		return er.Wrap("account saving failed:", err)
 	}
 
 	lastPostFPath := filepath.Join(instAcFPath, lastPostFileName(username))
+
 	err = saveLastPostID(lastPostFPath, user.LastPostID)
 	if err != nil {
 		return er.Wrap("saving last post ID failed:", err)
@@ -51,6 +53,7 @@ func (s Storage) GetAccount(username string) (*storage.User, error) {
 	}
 
 	lastPostFPath := filepath.Join(s.basePath, username, lastPostFileName(username))
+
 	lastID, err := readLastPostID(lastPostFPath)
 	if err != nil {
 		return nil, er.Wrap("getting last post ID failed:", err)
@@ -61,10 +64,12 @@ func (s Storage) GetAccount(username string) (*storage.User, error) {
 
 func (s Storage) SaveLastPostID(postID string, username string) error {
 	lastPostFPath := filepath.Join(s.basePath, username, lastPostFileName(username))
+
 	err := saveLastPostID(lastPostFPath, postID)
 	if err != nil {
 		return er.Wrap("saving last post ID failed:", err)
 	}
+
 	return nil
 }
 
@@ -81,14 +86,17 @@ func saveLastPostID(fPath string, lastID string) error {
 	if err != nil {
 		return er.Wrap("creating file failed: ", err)
 	}
+
 	_, err = file.WriteString(lastID)
 	if err != nil {
 		return er.Wrap("writing to file failed: ", err)
 	}
+
 	err = file.Close()
 	if err != nil {
 		return er.Wrap("closing file failed: ", err)
 	}
+
 	return nil
 }
 
@@ -97,6 +105,6 @@ func readLastPostID(fPath string) (string, error) {
 	if err != nil {
 		return "", er.Wrap("can't open file: ", err)
 	}
-	return string(id), nil
 
+	return string(id), nil
 }

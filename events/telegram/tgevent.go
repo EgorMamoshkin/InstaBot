@@ -65,6 +65,7 @@ func (p *Processor) processMessage(ctx context.Context, event events.Event) erro
 	if err != nil {
 		return er.Wrap("can't handle message:", err)
 	}
+
 	if err := p.execCmd(ctx, event.Text, meta.ChatID, meta.Username); err != nil {
 		return er.Wrap("can't process the message:", err)
 	}
@@ -102,6 +103,7 @@ func FetchText(upd tgclient.Update) string {
 	if upd.Message == nil {
 		return ""
 	}
+
 	return upd.Message.Text
 }
 
@@ -109,5 +111,6 @@ func FetchType(upd tgclient.Update) events.Type {
 	if upd.Message == nil {
 		return events.Unknown
 	}
+
 	return events.Message
 }
