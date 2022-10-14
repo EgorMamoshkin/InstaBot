@@ -3,6 +3,7 @@ package telegram
 import (
 	"context"
 	"errors"
+	"github.com/EgorMamoshkin/InstaBot/apiclient/instagramapi"
 	"github.com/EgorMamoshkin/InstaBot/clients/tgclient"
 	"github.com/EgorMamoshkin/InstaBot/events"
 	"github.com/EgorMamoshkin/InstaBot/lib/er"
@@ -11,6 +12,7 @@ import (
 
 type Processor struct {
 	tg      *tgclient.Client
+	inst    *instagramapi.Client
 	offset  int
 	storage storage.Storage
 }
@@ -23,9 +25,10 @@ type Meta struct {
 var ErrUnknownEventType = errors.New("unknown event type")
 var ErrUnknownMetaType = errors.New("unknown meta type")
 
-func New(tgClient *tgclient.Client, storage storage.Storage) *Processor {
+func New(tgClient *tgclient.Client, instClient *instagramapi.Client, storage storage.Storage) *Processor {
 	return &Processor{
 		tg:      tgClient,
+		inst:    instClient,
 		storage: storage,
 	}
 }

@@ -10,24 +10,26 @@ import (
 	"log"
 	"net/url"
 	"path"
-	"strconv"
 	"strings"
 )
 
 const (
-	HelpCmd       = "/help"
-	StartCmd      = "/start"
-	GetUpdatesCmd = "/upd"
-	StartAuth     = "/startauth"
-	InstagramAPI  = "api.instagram.com"
-	AppID         = "1240972063113217"
-	ServerHost    = "188.225.60.154:8080"
+	HelpCmd        = "/help"
+	StartCmd       = "/start"
+	GetUpdatesCmd  = "/upd"
+	StartAuth      = "/startAuth"
+	GetAccessToken = "/getAccess"
 )
 
 func (p *Processor) execCmd(ctx context.Context, text string, chatID int, username string) error {
 	text = strings.TrimSpace(text)
 
 	log.Printf("new command '%s' from %s(%d)", text, username, chatID)
+
+	command, ok := isCommand(text)
+	if ok {
+		text = command[0]
+	}
 
 	switch text {
 	case HelpCmd:
@@ -38,6 +40,8 @@ func (p *Processor) execCmd(ctx context.Context, text string, chatID int, userna
 		return p.StartFeedUpd(ctx, chatID, username)
 	case StartAuth:
 		return p.StartAuth(chatID)
+	case GetAccessToken:
+		return p.AccessToken(chatID, command[1])
 	default:
 		if login, pass, err := isLoginPass(text); err != nil {
 			_ = p.tg.SendMessage(chatID, msgUnknownCommand)
@@ -131,32 +135,39 @@ func (p *Processor) StartFeedUpd(ctx context.Context, chatID int, username strin
 }
 
 func (p *Processor) StartAuth(chatID int) error {
-	redirectURL := url.URL{
-		Scheme: "https",
-		Host:   ServerHost,
-		Path:   "auth",
-	}
-
-	q := url.Values{}
-	q.Add("chat_id", strconv.Itoa(chatID))
-
-	redirectURL.RawQuery = q.Encode()
-
 	requestURL := url.URL{
 		Scheme: "https",
-		Host:   InstagramAPI,
+		Host:   p.inst.GetAPIHost(),
 		Path:   path.Join("oauth", "authorize"),
 	}
 
 	query := url.Values{}
-	query.Add("client_id", AppID)
-	query.Add("redirect_uri", redirectURL.String())
+	query.Add("client_id", p.inst.GetAppID())
+	query.Add("redirect_uri", p.inst.GetRedirectURI())
 	query.Add("scope", "user_profile,user_media")
 	query.Add("response_type", "code")
 
 	requestURL.RawQuery = query.Encode()
 
 	return p.tg.SendMessage(chatID, requestURL.String())
+}
+
+func (p *Processor) AccessToken(chatID int, reqToken string) error {
+	userToken, err := p.inst.GetAccessToken(reqToken)
+	if err != nil {
+		_ = p.tg.SendMessage(chatID, MsgAuthFailed)
+
+		return er.Wrap("can't get access token: ", err)
+	}
+
+	err = p.storage.SaveToken(chatID, userToken)
+	if err != nil {
+		_ = p.tg.SendMessage(chatID, MsgAuthFailed)
+
+		return er.Wrap("can't save token: ", err)
+	}
+
+	return p.tg.SendMessage(chatID, MsgSuccessfulAuth)
 }
 
 func loginInstagram(login string, pass string) (*goinsta.Instagram, error) {
@@ -216,4 +227,14 @@ func getIndex(lastItemID string, posts []*goinsta.Item) int {
 	}
 
 	return -1
+}
+
+func isCommand(text string) ([]string, bool) {
+	if strings.HasPrefix(text, "/") {
+		command := strings.Split(text, "\n")
+
+		return command, true
+	}
+
+	return nil, false
 }
