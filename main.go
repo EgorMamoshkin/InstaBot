@@ -1,18 +1,21 @@
 package main
 
 import (
-	"InstaBot/clients/tgclient"
-	event_consumer "InstaBot/consumer/event-consumer"
-	"InstaBot/events/telegram"
-	"InstaBot/storage/postgres"
 	"context"
 	"flag"
 	"fmt"
+	"github.com/EgorMamoshkin/InstaBot/auth/authserver"
+	"github.com/EgorMamoshkin/InstaBot/auth/handler"
+	"github.com/EgorMamoshkin/InstaBot/clients/tgclient"
+	event_consumer "github.com/EgorMamoshkin/InstaBot/consumer/event-consumer"
+	"github.com/EgorMamoshkin/InstaBot/events/telegram"
+	"github.com/EgorMamoshkin/InstaBot/storage/postgres"
 	"log"
 )
 
 const (
 	tgBotHost = "api.telegram.org"
+
 	// storagePath = "storage"
 	batchSize = 50
 )
@@ -21,10 +24,23 @@ func main() {
 	token, pass := mustTokenPass()
 
 	dsn := fmt.Sprintf("postgres://postgres:%s@localhost:5432/instagramBotDB?sslmode=disable", pass)
+
 	s, err := postgres.New(dsn)
 	if err != nil {
 		log.Fatal("can't connect to storage", err)
 	}
+
+	tg := tgclient.New(tgBotHost, token)
+
+	respHandler := handler.New(telegram.InstagramAPI, tg, s)
+	server := authserver.New(respHandler)
+
+	go func() {
+		err = server.StartLS()
+		if err != nil {
+			log.Printf("server crashed: %s", err)
+		}
+	}()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -34,7 +50,7 @@ func main() {
 	}
 
 	eventsProcessor := telegram.New(
-		tgclient.New(tgBotHost, token),
+		tg,
 		s,
 	)
 	log.Print("service started")
