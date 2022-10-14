@@ -49,7 +49,7 @@ func (s Storage) GetAccount(username string) (*storage.User, error) {
 
 	instAcc, err := goinsta.Import(fPath)
 	if err != nil {
-		return nil, er.Wrap("instagram account import failed:", err)
+		return nil, er.Wrap("instagramapi account import failed:", err)
 	}
 
 	lastPostFPath := filepath.Join(s.basePath, username, lastPostFileName(username))

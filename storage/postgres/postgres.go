@@ -102,7 +102,7 @@ func (s *Storage) SaveLastPostID(ctx context.Context, postID string, username st
 	return nil
 }
 
-func (s *Storage) SaveToken(chatID int, userToken instagramapi.User) error {
+func (s *Storage) SaveToken(chatID int, userToken *instagramapi.User) error {
 	q := `INSERT INTO token(tg_chat_id, instagram_user_id, access_token) VALUES($1, $2, $3)`
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
