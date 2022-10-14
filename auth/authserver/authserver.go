@@ -17,7 +17,8 @@ func New(handler *handler.ResponseHandler) *AuthServer {
 
 func (a *AuthServer) StartLS() error {
 	r := mux.NewRouter()
-	r.HandleFunc("/auth", a.handler.ServeHTTP)
+	r.HandleFunc("/auth", a.handler.TokenRedirect)
+
 	http.Handle("/", r)
 
 	err := http.ListenAndServe(":8080", nil)
