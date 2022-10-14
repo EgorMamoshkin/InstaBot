@@ -41,7 +41,7 @@ func (p *Processor) execCmd(ctx context.Context, text string, chatID int, userna
 	case StartAuth:
 		return p.StartAuth(chatID)
 	case GetAccessToken:
-		return p.AccessToken(chatID, command[1])
+		return p.AccessToken(ctx, chatID, command[1])
 	default:
 		if login, pass, err := isLoginPass(text); err != nil {
 			_ = p.tg.SendMessage(chatID, msgUnknownCommand)
@@ -152,19 +152,31 @@ func (p *Processor) StartAuth(chatID int) error {
 	return p.tg.SendMessage(chatID, requestURL.String())
 }
 
-func (p *Processor) AccessToken(chatID int, reqToken string) error {
-	userToken, err := p.inst.GetAccessToken(reqToken)
+func (p *Processor) AccessToken(ctx context.Context, chatID int, reqToken string) error {
+	userToken, err := p.inst.ExchangeToAccessToken(reqToken)
 	if err != nil {
 		_ = p.tg.SendMessage(chatID, MsgAuthFailed)
 
 		return er.Wrap("can't get access token: ", err)
 	}
 
-	err = p.storage.SaveToken(chatID, userToken)
+	ok, err := p.storage.IsUserExist(ctx, chatID)
 	if err != nil {
-		_ = p.tg.SendMessage(chatID, MsgAuthFailed)
+		log.Println("can't check is user exists: ", err)
+	}
 
-		return er.Wrap("can't save token: ", err)
+	if ok {
+		err = p.storage.UpdateToken(ctx, chatID, userToken)
+		if err != nil {
+			return er.Wrap("can't update token: ", err)
+		}
+	} else {
+		err = p.storage.SaveToken(ctx, chatID, userToken)
+		if err != nil {
+			_ = p.tg.SendMessage(chatID, MsgAuthFailed)
+
+			return er.Wrap("can't save token: ", err)
+		}
 	}
 
 	return p.tg.SendMessage(chatID, MsgSuccessfulAuth)

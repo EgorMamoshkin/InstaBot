@@ -102,11 +102,10 @@ func (s *Storage) SaveLastPostID(ctx context.Context, postID string, username st
 	return nil
 }
 
-func (s *Storage) SaveToken(chatID int, userToken *instagramapi.User) error {
+func (s *Storage) SaveToken(ctx context.Context, chatID int, userToken *instagramapi.User) error {
 	q := `INSERT INTO token(tg_chat_id, instagram_user_id, access_token) VALUES($1, $2, $3)`
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+	ctx, _ = context.WithTimeout(ctx, 5*time.Second)
 
 	_, err := s.db.ExecContext(ctx, q, chatID, userToken.UserID, userToken.Token)
 	if err != nil {
@@ -125,6 +124,36 @@ func (s *Storage) Init(ctx context.Context) error {
 	_, err := s.db.ExecContext(ctx, q)
 	if err != nil {
 		return er.Wrap("can't create new table: ", err)
+	}
+
+	return nil
+}
+
+func (s *Storage) IsUserExist(ctx context.Context, chatID int) (bool, error) {
+	q := `SELECT COUNT(tg_chat_id) FROM token WHERE tg_chat_id = $1`
+
+	ctx, _ = context.WithTimeout(ctx, 5*time.Second)
+
+	row := s.db.QueryRowContext(ctx, q, chatID)
+
+	var res int
+
+	err := row.Scan(&res)
+	if err != nil {
+		return false, er.Wrap("scaning rows ERROR: ", err)
+	}
+
+	return res > 0, nil
+}
+
+func (s *Storage) UpdateToken(ctx context.Context, chatID int, user *instagramapi.User) error {
+	q := `UPDATE token SET instagram_user_id = $1, access_token = $2 WHERE tg_chat_id = $3`
+
+	ctx, _ = context.WithTimeout(ctx, 5*time.Second)
+
+	_, err := s.db.ExecContext(ctx, q, user.UserID, user.Token, chatID)
+	if err != nil {
+		return er.Wrap("can't update token: ", err)
 	}
 
 	return nil
