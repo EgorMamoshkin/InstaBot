@@ -1,8 +1,8 @@
 package event_consumer
 
 import (
-	"InstaBot/events"
 	"context"
+	"github.com/EgorMamoshkin/InstaBot/events"
 	"log"
 	"sync"
 	"time"

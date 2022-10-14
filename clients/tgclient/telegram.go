@@ -1,9 +1,9 @@
 package tgclient
 
 import (
-	"InstaBot/lib/er"
 	"encoding/json"
 	"errors"
+	"github.com/EgorMamoshkin/InstaBot/lib/er"
 	"io"
 	"net/http"
 	"net/url"
