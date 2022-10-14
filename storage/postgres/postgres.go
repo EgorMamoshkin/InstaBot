@@ -95,7 +95,7 @@ func (s *Storage) SaveLastPostID(ctx context.Context, postID string, username st
 	q := `UPDATE instagram_users SET last_post_id = $1 WHERE username_tg = $2`
 
 	_, err := s.db.ExecContext(ctx, q, postID, username)
-	if err == sql.ErrNoRows {
+	if err != nil {
 		return er.Wrap("can't save last post ID: ", err)
 	}
 
@@ -157,4 +157,23 @@ func (s *Storage) UpdateToken(ctx context.Context, chatID int, user *instagramap
 	}
 
 	return nil
+}
+
+func (s *Storage) GetInstUser(ctx context.Context, chatID int) (*instagramapi.User, error) {
+	q := `SELECT instagram_user_id, access_token FROM token WHERE tg_chat_id = $1`
+
+	row := s.db.QueryRowContext(ctx, q, chatID)
+
+	var user instagramapi.User
+
+	err := row.Scan(&user.UserID, &user.Token)
+	if err == sql.ErrNoRows {
+		return nil, er.Wrap("there are no any saved accounts by this user: ", err)
+	}
+
+	if err != nil {
+		return nil, er.Wrap("can't get user's account: ", err)
+	}
+
+	return &user, nil
 }

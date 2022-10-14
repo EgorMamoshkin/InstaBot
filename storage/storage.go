@@ -13,6 +13,7 @@ type Storage interface {
 	SaveToken(ctx context.Context, chatID int, userToken *instagramapi.User) error
 	IsUserExist(ctx context.Context, chatID int) (bool, error)
 	UpdateToken(ctx context.Context, chatID int, user *instagramapi.User) error
+	GetInstUser(ctx context.Context, chatID int) (*instagramapi.User, error)
 }
 
 type User struct {
