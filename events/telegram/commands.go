@@ -1,13 +1,16 @@
 package telegram
 
 import (
-	insta_parse "InstaBot/insta-parse"
-	"InstaBot/lib/er"
-	"InstaBot/storage"
 	"context"
 	"errors"
 	"github.com/Davincible/goinsta/v3"
+	insta_parse "github.com/EgorMamoshkin/InstaBot/insta-parse"
+	"github.com/EgorMamoshkin/InstaBot/lib/er"
+	"github.com/EgorMamoshkin/InstaBot/storage"
 	"log"
+	"net/url"
+	"path"
+	"strconv"
 	"strings"
 )
 
@@ -15,6 +18,10 @@ const (
 	HelpCmd       = "/help"
 	StartCmd      = "/start"
 	GetUpdatesCmd = "/upd"
+	StartAuth     = "/startauth"
+	InstagramAPI  = "api.instagram.com"
+	AppID         = "1240972063113217"
+	ServerHost    = "188.225.60.154:8080"
 )
 
 func (p *Processor) execCmd(ctx context.Context, text string, chatID int, username string) error {
@@ -29,6 +36,8 @@ func (p *Processor) execCmd(ctx context.Context, text string, chatID int, userna
 		return p.SendHello(chatID)
 	case GetUpdatesCmd:
 		return p.StartFeedUpd(ctx, chatID, username)
+	case StartAuth:
+		return p.StartAuth(chatID)
 	default:
 		if login, pass, err := isLoginPass(text); err != nil {
 			_ = p.tg.SendMessage(chatID, msgUnknownCommand)
@@ -119,6 +128,35 @@ func (p *Processor) StartFeedUpd(ctx context.Context, chatID int, username strin
 	}
 
 	return p.tg.SendMessage(chatID, msgNoNewPost)
+}
+
+func (p *Processor) StartAuth(chatID int) error {
+	redirectURL := url.URL{
+		Scheme: "https",
+		Host:   ServerHost,
+		Path:   "auth",
+	}
+
+	q := url.Values{}
+	q.Add("chat_id", strconv.Itoa(chatID))
+
+	redirectURL.RawQuery = q.Encode()
+
+	requestURL := url.URL{
+		Scheme: "https",
+		Host:   InstagramAPI,
+		Path:   path.Join("oauth", "authorize"),
+	}
+
+	query := url.Values{}
+	query.Add("client_id", AppID)
+	query.Add("redirect_uri", redirectURL.String())
+	query.Add("scope", "user_profile,user_media")
+	query.Add("response_type", "code")
+
+	requestURL.RawQuery = query.Encode()
+
+	return p.tg.SendMessage(chatID, requestURL.String())
 }
 
 func loginInstagram(login string, pass string) (*goinsta.Instagram, error) {

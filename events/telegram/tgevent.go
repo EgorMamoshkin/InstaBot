@@ -1,12 +1,12 @@
 package telegram
 
 import (
-	"InstaBot/clients/tgclient"
-	"InstaBot/events"
-	"InstaBot/lib/er"
-	"InstaBot/storage"
 	"context"
 	"errors"
+	"github.com/EgorMamoshkin/InstaBot/clients/tgclient"
+	"github.com/EgorMamoshkin/InstaBot/events"
+	"github.com/EgorMamoshkin/InstaBot/lib/er"
+	"github.com/EgorMamoshkin/InstaBot/storage"
 )
 
 type Processor struct {

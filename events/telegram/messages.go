@@ -18,4 +18,6 @@ const (
 	msgSavingAccFailed   = "Saving your account failed. 😓 Please try again"
 	msgOpenAccFailed     = "Opening account failed. 🥶 Please log in again and restart"
 	msgNotLoggedInBefore = "Please log in to Instagram account to get updates read /help \U0001FAF5"
+	MsgSuccessfulAuth    = "Authentication successful, now you can save posts (/saveposts)"
+	MsgAuthFailed        = "Authentication failed. Please try again"
 )
