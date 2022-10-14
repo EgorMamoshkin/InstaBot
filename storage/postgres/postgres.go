@@ -118,7 +118,7 @@ func (s *Storage) SaveToken(chatID int, userToken auth.UserAccess) error {
 
 func (s *Storage) Init(ctx context.Context) error {
 	q := `CREATE TABLE IF NOT EXISTS instagram_users (user_id SERIAL PRIMARY KEY, username_tg VARCHAR(40), instagram_acc VARCHAR, last_post_id VARCHAR(40));
-	CREATE TABLE IF NOT EXISTS token (id SERIAL PRIMARY KEY, tg_chat_id INT, instagram_user_id INT, access_token VARCHAR)`
+	CREATE TABLE IF NOT EXISTS token (id SERIAL PRIMARY KEY, tg_chat_id BIGINT, instagram_user_id BIGINT, access_token VARCHAR)`
 
 	ctx, _ = context.WithTimeout(ctx, 5*time.Second)
 

@@ -1,10 +1,10 @@
 package files
 
 import (
-	"InstaBot/lib/er"
-	"InstaBot/storage"
 	"fmt"
 	"github.com/Davincible/goinsta/v3"
+	"github.com/EgorMamoshkin/InstaBot/lib/er"
+	"github.com/EgorMamoshkin/InstaBot/storage"
 	"io/ioutil"
 	"os"
 	"path/filepath"
