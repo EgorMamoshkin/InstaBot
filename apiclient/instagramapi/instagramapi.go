@@ -48,7 +48,7 @@ func (c *Client) GetAPIHost() string {
 	return c.host
 }
 
-func (c *Client) GetAccessToken(reqToken string) (*User, error) {
+func (c *Client) ExchangeToAccessToken(reqToken string) (*User, error) {
 	qr := url.Values{}
 	qr.Add("client_id", c.cfg.appID)
 	qr.Add("client_secret", c.cfg.appSecret)
