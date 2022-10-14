@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"github.com/Davincible/goinsta/v3"
-	"github.com/EgorMamoshkin/InstaBot/auth"
+	"github.com/EgorMamoshkin/InstaBot/apiclient/instagramapi"
 	"github.com/EgorMamoshkin/InstaBot/lib/er"
 	"github.com/EgorMamoshkin/InstaBot/storage"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -70,7 +70,7 @@ func (s *Storage) GetAccount(ctx context.Context, username string) (*storage.Use
 	}
 
 	if err != nil {
-		return nil, er.Wrap("can't get instagram account: ", err)
+		return nil, er.Wrap("can't get instagramapi account: ", err)
 	}
 
 	config := goinsta.ConfigFile{}
@@ -82,7 +82,7 @@ func (s *Storage) GetAccount(ctx context.Context, username string) (*storage.Use
 
 	instAcc, err := goinsta.ImportConfig(config)
 	if err != nil {
-		return nil, er.Wrap("can't import instagram account: ", err)
+		return nil, er.Wrap("can't import instagramapi account: ", err)
 	}
 
 	return &storage.User{LastPostID: lastPostID, InstAcc: instAcc}, nil
@@ -102,7 +102,7 @@ func (s *Storage) SaveLastPostID(ctx context.Context, postID string, username st
 	return nil
 }
 
-func (s *Storage) SaveToken(chatID int, userToken auth.UserAccess) error {
+func (s *Storage) SaveToken(chatID int, userToken instagramapi.User) error {
 	q := `INSERT INTO token(tg_chat_id, instagram_user_id, access_token) VALUES($1, $2, $3)`
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
