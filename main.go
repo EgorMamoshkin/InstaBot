@@ -4,12 +4,13 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"github.com/EgorMamoshkin/InstaBot/apiclient/instagramapi"
 	"github.com/EgorMamoshkin/InstaBot/auth/authserver"
-	"github.com/EgorMamoshkin/InstaBot/auth/handler"
 	"github.com/EgorMamoshkin/InstaBot/clients/tgclient"
 	event_consumer "github.com/EgorMamoshkin/InstaBot/consumer/event-consumer"
 	"github.com/EgorMamoshkin/InstaBot/events/telegram"
 	"github.com/EgorMamoshkin/InstaBot/storage/postgres"
+	"github.com/gorilla/mux"
 	"log"
 )
 
@@ -17,7 +18,11 @@ const (
 	tgBotHost = "api.telegram.org"
 
 	// storagePath = "storage"
-	batchSize = 50
+	batchSize   = 50
+	InstApiHost = "api.instagram.com"
+	AppID       = ""
+	AppSecret   = ""
+	RedirectURI = "https://188.225.60.154:8080/auth"
 )
 
 func main() {
@@ -25,15 +30,12 @@ func main() {
 
 	dsn := fmt.Sprintf("postgres://postgres:%s@localhost:5432/instagramBotDB?sslmode=disable", pass)
 
-	s, err := postgres.New(dsn)
+	st, err := postgres.New(dsn)
 	if err != nil {
 		log.Fatal("can't connect to storage", err)
 	}
 
-	tg := tgclient.New(tgBotHost, token)
-
-	respHandler := handler.New(telegram.InstagramAPI, tg, s)
-	server := authserver.New(respHandler)
+	server := authserver.New(mux.NewRouter())
 
 	go func() {
 		err = server.StartLS()
@@ -42,16 +44,19 @@ func main() {
 		}
 	}()
 
+	apiClient := instagramapi.New(InstApiHost, AppID, AppSecret, RedirectURI)
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	if err := s.Init(ctx); err != nil {
+	if err := st.Init(ctx); err != nil {
 		log.Fatal("can't init new table:", err)
 	}
 
 	eventsProcessor := telegram.New(
-		tg,
-		s,
+		tgclient.New(tgBotHost, token),
+		apiClient,
+		st,
 	)
 	log.Print("service started")
 
