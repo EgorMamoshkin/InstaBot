@@ -3,6 +3,7 @@ package tgclient
 import (
 	"encoding/json"
 	"errors"
+	"github.com/EgorMamoshkin/InstaBot/apiclient/instagramapi"
 	"github.com/EgorMamoshkin/InstaBot/lib/er"
 	"io"
 	"net/http"
@@ -98,7 +99,7 @@ func (c *Client) SendVideo(chatID int, videoURL string, caption string) error {
 	return nil
 }
 
-func (c *Client) SendMediaGroup(chatID int, mediaGr []MediaGroup) error {
+func (c *Client) SendMediaGroup(chatID int, mediaGr *[]MediaGroup) error {
 	res, err := json.Marshal(mediaGr)
 	if err != nil {
 		return er.Wrap("media group marshalling failed", err)
@@ -121,7 +122,7 @@ func (c *Client) SendMediaGroup(chatID int, mediaGr []MediaGroup) error {
 func (c *Client) SendPost(chatID int, mType []int, urls []string, caption string) error {
 	mediaGr := NewMediaGr(mType, urls, caption)
 	if len(mType) > 1 {
-		_ = c.SendMediaGroup(chatID, *mediaGr)
+		_ = c.SendMediaGroup(chatID, mediaGr)
 		err := c.SendMessage(chatID, caption)
 
 		return er.Wrap("can't send post", err)
@@ -151,11 +152,37 @@ func NewMediaGr(mType []int, urls []string, caption string) *[]MediaGroup {
 	return &mediaGR
 }
 
+func CreateMediaGr(carousel *instagramapi.UserMedia, caption string) *[]MediaGroup {
+	mediaGR := make([]MediaGroup, 0, len(carousel.Data))
+
+	for _, media := range carousel.Data {
+		mg := MediaGroup{
+			ContentType: convertMTypeValue(media.MediaType),
+			ContentURL:  media.MediaURL,
+			Caption:     caption,
+		}
+		mediaGR = append(mediaGR, mg)
+	}
+
+	return &mediaGR
+}
+
 func mTypeValue(mType int) string {
 	switch mType {
 	case 1:
 		return "photo"
 	case 2:
+		return "video"
+	default:
+		return ""
+	}
+}
+
+func convertMTypeValue(mType string) string {
+	switch mType {
+	case "IMAGE":
+		return "photo"
+	case "VIDEO":
 		return "video"
 	default:
 		return ""
