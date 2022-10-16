@@ -3,7 +3,10 @@ package telegram
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/Davincible/goinsta/v3"
+	"github.com/EgorMamoshkin/InstaBot/apiclient/instagramapi"
+	"github.com/EgorMamoshkin/InstaBot/clients/tgclient"
 	insta_parse "github.com/EgorMamoshkin/InstaBot/insta-parse"
 	"github.com/EgorMamoshkin/InstaBot/lib/er"
 	"github.com/EgorMamoshkin/InstaBot/storage"
@@ -11,6 +14,7 @@ import (
 	"net/url"
 	"path"
 	"strings"
+	"sync"
 )
 
 const (
@@ -19,6 +23,7 @@ const (
 	GetUpdatesCmd  = "/upd"
 	StartAuth      = "/startAuth"
 	GetAccessToken = "/getAccess"
+	GetPosts       = "/getPosts"
 )
 
 func (p *Processor) execCmd(ctx context.Context, text string, chatID int, username string) error {
@@ -42,6 +47,8 @@ func (p *Processor) execCmd(ctx context.Context, text string, chatID int, userna
 		return p.StartAuth(chatID)
 	case GetAccessToken:
 		return p.AccessToken(ctx, chatID, command[1])
+	case GetPosts:
+		return p.GetPosts(ctx, chatID)
 	default:
 		if login, pass, err := isLoginPass(text); err != nil {
 			_ = p.tg.SendMessage(chatID, msgUnknownCommand)
@@ -155,7 +162,7 @@ func (p *Processor) StartAuth(chatID int) error {
 func (p *Processor) AccessToken(ctx context.Context, chatID int, reqToken string) error {
 	userToken, err := p.inst.ExchangeToAccessToken(reqToken)
 	if err != nil {
-		_ = p.tg.SendMessage(chatID, MsgAuthFailed)
+		_ = p.tg.SendMessage(chatID, msgAuthFailed)
 
 		return er.Wrap("can't get access token: ", err)
 	}
@@ -173,13 +180,59 @@ func (p *Processor) AccessToken(ctx context.Context, chatID int, reqToken string
 	} else {
 		err = p.storage.SaveToken(ctx, chatID, userToken)
 		if err != nil {
-			_ = p.tg.SendMessage(chatID, MsgAuthFailed)
+			_ = p.tg.SendMessage(chatID, msgAuthFailed)
 
 			return er.Wrap("can't save token: ", err)
 		}
 	}
 
-	return p.tg.SendMessage(chatID, MsgSuccessfulAuth)
+	return p.tg.SendMessage(chatID, msgSuccessfulAuth)
+}
+
+func (p *Processor) GetPosts(ctx context.Context, chatID int) error {
+	instUser, err := p.storage.GetInstUser(ctx, chatID)
+	if err != nil {
+		_ = p.tg.SendMessage(chatID, msgCantGetPosts)
+
+		return er.Wrap("can't get user from DB: ", err)
+	}
+
+	userPosts, err := p.inst.GetPosts(instUser)
+	if err != nil {
+		return er.Wrap("can't get user posts:", err)
+	}
+
+	var wg sync.WaitGroup
+
+	wg.Add(len(userPosts.Data))
+
+	for _, post := range userPosts.Data {
+		go func(post instagramapi.Media) {
+			caption := fmt.Sprintf("@%s\n%s", post.Username, post.Caption)
+
+			switch post.MediaType {
+			case "IMAGE":
+				_ = p.tg.SendPhoto(chatID, post.MediaURL, caption)
+			case "VIDEO":
+				_ = p.tg.SendVideo(chatID, post.MediaURL, caption)
+			case "CAROUSEL_ALBUM":
+				carousel, err := p.inst.CarouselElements(post.ID, instUser)
+				if err != nil {
+					log.Println(er.Wrap("can't get carousel data: ", err))
+				}
+				_ = p.tg.SendMediaGroup(chatID, tgclient.CreateMediaGr(carousel, caption))
+				_ = p.tg.SendMessage(chatID, caption)
+			default:
+				_ = p.tg.SendMessage(chatID, fmt.Sprintf("%s type of post doesn't supply", post.MediaType))
+			}
+
+			wg.Done()
+		}(post)
+	}
+
+	wg.Wait()
+
+	return nil
 }
 
 func loginInstagram(login string, pass string) (*goinsta.Instagram, error) {
