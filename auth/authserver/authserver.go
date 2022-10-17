@@ -37,7 +37,7 @@ func RedirectToken(w http.ResponseWriter, r *http.Request) {
 		log.Println("there are no code")
 	}
 
-	link := fmt.Sprintf("https://telegram.me/share/url?url=/getAccess&text=%s", code)
+	link := fmt.Sprintf("https://telegram.me/share/url?url=/getaccess&text=%s", code)
 
 	http.Redirect(w, r, link, http.StatusSeeOther)
 }
