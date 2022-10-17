@@ -21,9 +21,9 @@ const (
 	HelpCmd        = "/help"
 	StartCmd       = "/start"
 	GetUpdatesCmd  = "/upd"
-	StartAuth      = "/startAuth"
-	GetAccessToken = "/getAccess"
-	GetPosts       = "/getPosts"
+	StartAuth      = "/startauth"
+	GetAccessToken = "/getaccess"
+	GetPosts       = "/getposts"
 )
 
 func (p *Processor) execCmd(ctx context.Context, text string, chatID int, username string) error {
