@@ -50,12 +50,13 @@ func (c *Consumer) handleEvents(ctx context.Context, events []events.Event) erro
 
 	for _, event := range events {
 		go func(wg *sync.WaitGroup) {
+			defer wg.Done()
+
 			log.Printf("got new event: %s", event.Text)
 
 			if err := c.processor.Process(ctx, event); err != nil {
 				log.Printf("can't handle event: %s", err.Error())
 			}
-			wg.Done()
 		}(&wg)
 	}
 	wg.Wait()
